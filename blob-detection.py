@@ -75,9 +75,6 @@ def detect_dices(img, keypoints):
         eps = 0.2 * current_dot.diam
         dots = calc_distance(current_dot, dots) # dots[0] = current_dot
 
-        img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)),  int(detection_circle+eps), (0,0,0), 1)
-        img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)),  int(detection_circle-eps), (0,0,0), 1)
-
         # [1]: nearest dot > 2*detection circle
         if (len(dots) == 1 or dots[1].dist > 2*(detection_circle+eps)):
             result[0] = result[0] + 1
@@ -156,19 +153,19 @@ def print_result(result):
 
 
 def draw_result(img, result):
-    cv2.putText(img, f"[1]: {result[0]}", (20, 30), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
-    cv2.putText(img, f"[2]: {result[1]}", (20, 60), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
-    cv2.putText(img, f"[3]: {result[2]}", (20, 90), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
-    cv2.putText(img, f"[4]: {result[3]}", (20, 120), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
-    cv2.putText(img, f"[5]: {result[4]}", (20, 150), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
-    cv2.putText(img, f"[6]: {result[5]}", (20, 180), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(img, f"[1]: {result[0]}", (20, 30), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"[2]: {result[1]}", (20, 60), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"[3]: {result[2]}", (20, 90), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"[4]: {result[3]}", (20, 120), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"[5]: {result[4]}", (20, 150), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, f"[6]: {result[5]}", (20, 180), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
     return img
 
 def main():
     assets = get_assets()
     for file in assets:
         img_color, img_gray = load_picture(file)
-        
+
         params = cv2.SimpleBlobDetector_Params()
         params.filterByColor = True
         params.blobColor = 0
@@ -191,12 +188,13 @@ def main():
         # detect white dots on a dark dice
         params.blobColor = 255
         white_dots_detector = cv2.SimpleBlobDetector_create(params)
-        keypoints += white_dots_detector.detect(img_gray)
+        keypoints_white = white_dots_detector.detect(img_gray)
 
         img, result = detect_dices(img_color, keypoints)
         img = draw_result(img, result)
         print("----------------------------")
         print("file: ", file)
+        print("k: ", len(keypoints))
         print_result(result)
         show_picture(img, 'Dice recognition')
 
