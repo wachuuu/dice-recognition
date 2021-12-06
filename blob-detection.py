@@ -5,8 +5,9 @@ from os import listdir
 from os.path import isfile, join
 
 RESIZED_WIDTH = 700
-dc_factor = 1.8
-pic_in_row = 5
+DC_FACTOR = 1.8
+PIC_IN_ROW = 5
+
 
 class Dot:
     def __init__(self, x, y, diam):
@@ -57,17 +58,17 @@ def calc_distance(current_dot, dots):
     return dots
 
 
-def detect_dices(img, keypoints):
+def detect_dices(img, key_points):
     result = [0] * 6
     i = 0
     dots = []  # all dots detected
     detection_queue = []  # dots for calculations
     temp = []
 
-    if len(keypoints) == 0:
+    if len(key_points) == 0:
         return img, result
 
-    for k in keypoints:
+    for k in key_points:
         img = cv2.circle(img, (int(k.pt[0]), int(k.pt[1])), int(k.size / 2), (0, 255, 0), 2)
         dots.append(Dot(k.pt[0], k.pt[1], k.size))
         temp.append(k.size)
@@ -80,24 +81,24 @@ def detect_dices(img, keypoints):
         current_dot = detection_queue.pop()
 
         if current_dot.diam < q1:
-            detection_circle = dc_factor * q1
+            detection_circle = DC_FACTOR * q1
         elif current_dot.diam > q3:
-            detection_circle = dc_factor * q3
+            detection_circle = DC_FACTOR * q3
         else:
-            detection_circle = dc_factor * current_dot.diam
+            detection_circle = DC_FACTOR * current_dot.diam
         eps = 0.25 * current_dot.diam
         dots = calc_distance(current_dot, dots)  # dots[0] = current_dot
         enclosing_points = [(current_dot.x, current_dot.y)]
 
         # [1]: nearest dot > 2*detection circle
-        if len(dots) == 1 or dots[1].dist > 2 * (detection_circle + eps*1.3):
+        if len(dots) == 1 or dots[1].dist > 2 * (detection_circle + eps * 1.3):
             result[0] = result[0] + 1
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(2 * (detection_circle - eps)),
                              (255, 0, 0), 2)
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 0, 0), 2)
 
         # [2]: nearest dot in 2*detection_circle (+/- epsilon)
-        elif len(dots) > 1 and 2 * (detection_circle - eps) < dots[1].dist < 2 * (detection_circle + eps*1.3):
+        elif len(dots) > 1 and 2 * (detection_circle - eps) < dots[1].dist < 2 * (detection_circle + eps * 1.3):
             detection_queue = calc_distance(current_dot, detection_queue)
             next_dot = detection_queue.pop(0)
             enclosing_points.append((next_dot.x, next_dot.y))
@@ -105,7 +106,7 @@ def detect_dices(img, keypoints):
             result[1] = result[1] + 1
 
             (x, y), r = cv2.minEnclosingCircle(enclosing_points)
-            img = cv2.circle(img, (int(x), int(y)), int(r+current_dot.diam), (255, 255, 0), 2)
+            img = cv2.circle(img, (int(x), int(y)), int(r + current_dot.diam), (255, 255, 0), 2)
 
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 255, 0), 2)
             img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (255, 255, 0), 2)
@@ -140,7 +141,8 @@ def detect_dices(img, keypoints):
                     if len(detection_queue) > 0:
                         next_dot = detection_queue.pop(0)
                         enclosing_points.append((next_dot.x, next_dot.y))
-                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (0, 0, 255), 2)
+                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (0, 0, 255),
+                                         2)
 
                 enclosing_points = np.array(enclosing_points, dtype=np.int32)
                 (x, y), r = cv2.minEnclosingCircle(enclosing_points)
@@ -211,7 +213,7 @@ def draw_result(img, result, k):
     cv2.putText(img, f" k: {k}", (600, 30), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
     k_sum = 0
     for i in range(6):
-        k_sum += result[i]*(i+1)
+        k_sum += result[i] * (i + 1)
     cv2.putText(img, f"ks: {k_sum}", (600, 60), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
     return img
@@ -255,12 +257,12 @@ def main():
         print("k: ", len(keypoints))
         print_result(result)
 
-        ax = plt.subplot2grid((len(assets) // pic_in_row + 1, pic_in_row), (i//pic_in_row, i % pic_in_row))
+        ax = plt.subplot2grid((len(assets) // PIC_IN_ROW + 1, PIC_IN_ROW), (i // PIC_IN_ROW, i % PIC_IN_ROW))
         ax.axis('off')
         ax.imshow((cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))
         show_picture(img, 'Dice recognition')
 
-    plt.savefig('kostki.pdf')
+    plt.savefig('dice_result.pdf')
     plt.show()
     cv2.destroyAllWindows()
 
