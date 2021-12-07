@@ -253,8 +253,8 @@ def main():
         ax.imshow((cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))
         show_picture(img, 'Dice recognition')
 
-    plt.savefig('dice_result.pdf')
-    plt.show()
+    # plt.savefig('dice_result.pdf')
+    # plt.show()
     cv2.destroyAllWindows()
 
 
