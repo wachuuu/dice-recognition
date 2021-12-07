@@ -6,6 +6,7 @@ from os.path import isfile, join
 
 RESIZED_WIDTH = 700
 DC_FACTOR = 1.8
+EPS_FACTOR = 0.25
 PIC_IN_ROW = 5
 
 
@@ -74,8 +75,9 @@ def detect_dices(img, key_points):
         temp.append(k.size)
     detection_queue = dots[:]
 
-    q1 = np.percentile(temp, 30)
-    q3 = np.percentile(temp, 90)
+    # percentiles used to threshold dot size and minimize their impact for detection circle
+    q1 = np.percentile(temp, 30)    # lower limit
+    q3 = np.percentile(temp, 90)    # upper limit
 
     while len(detection_queue) > 0 and len(dots) > 0 and i < 1000:
         current_dot = detection_queue.pop()
@@ -86,15 +88,14 @@ def detect_dices(img, key_points):
             detection_circle = DC_FACTOR * q3
         else:
             detection_circle = DC_FACTOR * current_dot.diam
-        eps = 0.25 * current_dot.diam
+        eps = EPS_FACTOR * current_dot.diam
         dots = calc_distance(current_dot, dots)  # dots[0] = current_dot
         enclosing_points = [(current_dot.x, current_dot.y)]
 
         # [1]: nearest dot > 2*detection circle
         if len(dots) == 1 or dots[1].dist > 2 * (detection_circle + eps * 1.3):
             result[0] = result[0] + 1
-            img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(2 * (detection_circle - eps)),
-                             (255, 0, 0), 2)
+            img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(2 * (detection_circle - eps)), (255, 0, 0), 2)
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 0, 0), 2)
 
         # [2]: nearest dot in 2*detection_circle (+/- epsilon)
@@ -107,26 +108,21 @@ def detect_dices(img, key_points):
 
             (x, y), r = cv2.minEnclosingCircle(enclosing_points)
             img = cv2.circle(img, (int(x), int(y)), int(r + current_dot.diam), (255, 255, 0), 2)
-
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 255, 0), 2)
             img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (255, 255, 0), 2)
 
         # [3] or [5]: two nearest dots in detection circle  
-        elif (len(dots) > 2 and len(detection_queue) > 1 and (detection_circle - eps) < dots[1].dist < (
-                detection_circle + eps) and (detection_circle - eps) < dots[2].dist < (detection_circle + eps)):
+        elif len(dots) > 2 and len(detection_queue) > 1 and (detection_circle - eps) < dots[1].dist < (detection_circle + eps) and (detection_circle - eps) < dots[2].dist < (detection_circle + eps):
             # [5]: third nearest dot is also in detection circle (+/- epsilon)
-            if (len(dots) > 4 and len(detection_queue) > 3 and (detection_circle - eps) < dots[3].dist < (
-                    detection_circle + eps)):
+            if len(dots) > 4 and len(detection_queue) > 3 and (detection_circle - eps) < dots[3].dist < (detection_circle + eps):
                 detection_queue = calc_distance(current_dot, detection_queue)
 
-                img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2),
-                                 (0, 255, 255), 2)
+                img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam/2), (0, 255, 255), 2)
                 for z in range(4):
                     if len(detection_queue) > 0:
                         next_dot = detection_queue.pop(0)
                         enclosing_points.append((next_dot.x, next_dot.y))
-                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (0, 255, 255),
-                                         2)
+                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam/2), (0, 255, 255), 2)
                 enclosing_points = np.array(enclosing_points, dtype=np.int32)
                 (x, y), r = cv2.minEnclosingCircle(enclosing_points)
                 img = cv2.circle(img, (int(x), int(y)), int(r + current_dot.diam), (0, 255, 255), 2)
@@ -135,14 +131,12 @@ def detect_dices(img, key_points):
             # [3]: third nearest dot outside detection circle
             elif dots[3].dist > (detection_circle + eps):
                 detection_queue = calc_distance(current_dot, detection_queue)
-                img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (0, 0, 255),
-                                 2)
+                img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam/2), (0, 0, 255), 2)
                 for z in range(2):
                     if len(detection_queue) > 0:
                         next_dot = detection_queue.pop(0)
                         enclosing_points.append((next_dot.x, next_dot.y))
-                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam / 2), (0, 0, 255),
-                                         2)
+                        img = cv2.circle(img, (int(next_dot.x), int(next_dot.y)), int(next_dot.diam/2), (0, 0, 255), 2)
 
                 enclosing_points = np.array(enclosing_points, dtype=np.int32)
                 (x, y), r = cv2.minEnclosingCircle(enclosing_points)
@@ -151,11 +145,9 @@ def detect_dices(img, key_points):
                 result[2] = result[2] + 1
 
         # [4]: nearest dot in 2*detection circle (+/- epsilon) / sqrt(2)
-        elif (len(dots) > 3 and len(detection_queue) > 2 and 2 * (detection_circle - eps) / np.sqrt(2) < dots[
-            1].dist < 2 * (detection_circle + eps) / np.sqrt(2)):
+        elif len(dots) > 3 and len(detection_queue) > 2 and 2 * (detection_circle - eps) / np.sqrt(2) < dots[1].dist < 2 * (detection_circle + eps) / np.sqrt(2):
             detection_queue = calc_distance(current_dot, detection_queue)
-            img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 255, 255),
-                             2)
+            img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam/2), (255, 255, 255), 2)
             for z in range(3):
                 next_dot = detection_queue.pop(0)
                 enclosing_points.append((next_dot.x, next_dot.y))
@@ -168,8 +160,7 @@ def detect_dices(img, key_points):
             result[3] = result[3] + 1
 
         # [6]: nearest dot in detection circle (+/- epsilon) / sqrt(2)
-        elif (len(dots) > 5 and len(detection_queue) > 4 and (detection_circle - eps) / np.sqrt(2) < dots[1].dist < (
-                detection_circle + eps) / np.sqrt(2)):
+        elif len(dots) > 5 and len(detection_queue) > 4 and (detection_circle - eps) / np.sqrt(2) < dots[1].dist < (detection_circle + eps) / np.sqrt(2):
             img = cv2.circle(img, (int(current_dot.x), int(current_dot.y)), int(current_dot.diam / 2), (255, 0, 255), 2)
             detection_queue = calc_distance(current_dot, detection_queue)
             for z in range(5):
@@ -244,17 +235,17 @@ def main():
         params.maxThreshold = 200
         # detect dark dots on a white dice
         dark_dots_detector = cv2.SimpleBlobDetector_create(params)
-        keypoints = dark_dots_detector.detect(img_gray)
+        key_points = dark_dots_detector.detect(img_gray)
         # detect white dots on a dark dice
         params.blobColor = 255
         white_dots_detector = cv2.SimpleBlobDetector_create(params)
-        keypoints_white = white_dots_detector.detect(img_gray)
+        key_points_white = white_dots_detector.detect(img_gray)
 
-        img, result = detect_dices(img_color, keypoints)
-        img = draw_result(img, result, len(keypoints))
+        img, result = detect_dices(img_color, key_points)
+        img = draw_result(img, result, len(key_points))
         print("----------------------------")
         print("file: ", file)
-        print("k: ", len(keypoints))
+        print("k: ", len(key_points))
         print_result(result)
 
         ax = plt.subplot2grid((len(assets) // PIC_IN_ROW + 1, PIC_IN_ROW), (i // PIC_IN_ROW, i % PIC_IN_ROW))
